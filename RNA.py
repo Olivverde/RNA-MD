@@ -6,8 +6,12 @@ import pandas as pd
 from sklearn import tree
 from sklearn import metrics
 import statsmodels.api as sm
+import statsmodels.stats.diagnostic as smd
+import statsmodels.stats.diagnostic as diag
+import scipy.stats as stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import make_pipeline
@@ -33,6 +37,8 @@ from sklearn.metrics import mean_squared_error,r2_score
 from scipy.stats import normaltest
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import make_scorer, accuracy_score,precision_score
+from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score ,precision_score,recall_score,f1_score
 
@@ -57,7 +63,7 @@ class main(object):
     def data_classification(self):
         df = self.df
 
-        column_names = ['SalePrice','LotArea','OverallQual', 'TotRmsAbvGrd', 'GarageCars', 'FullBath','HouseStyle']
+        column_names = ['SalePrice','LotArea','OverallQual', 'TotRmsAbvGrd', 'GarageCars', 'FullBath']
         df = df[column_names]
        
         df.dropna(subset=column_names, inplace=True)
@@ -88,17 +94,24 @@ class main(object):
     def train_test(self):
         df = self.dummification()
         y = df.pop('SaleRange')
-        X = df[['LotArea','OverallQual', 'TotRmsAbvGrd', 'GarageCars', 'FullBath', 'HouseStyle']]
+        X = df[['LotArea','OverallQual', 'TotRmsAbvGrd', 'GarageCars', 'FullBath']]
         random.seed(123)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, train_size=0.7)
         return  X_train, X_test, y_train, y_test, X, y
 
     def normalizeData(self):
-        X_train, X_test,y_train, y_test, X, y = self.train_test()
-        
-        model = make_pipeline(StandardScaler(), LogisticRegression())
-        cv_result = cross_validate(model,X_train, y_train, cv=5 )
-        return cv_result
+        X_train, X_test, y_train, y_test, X, y = self.train_test()
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X_train = scaler.transform(X_train)
+        X_test = scaler.transform(X_test)
+        mlp = MLPClassifier(hidden_layer_sizes=(10,8), max_iter=1000)
+        mlp.fit(X_train,y_train)
+        y_pred = mlp.predict(X_test)
+                
+        #model = make_pipeline(StandardScaler(), LogisticRegression())
+        #cv_result = cross_validate(model,X_train, y_train, cv=5 )
+        return y_pred, y_test
 
     def treeDepth(self):
         
@@ -330,10 +343,21 @@ class main(object):
 
     def SVM(self):
         X_train, X_test, y_train, y_test, X, y = self.train_test()
-        
+    
+    def RNA(self):
+        y_pred, y_test = self.normalizeData()
+        cm = confusion_matrix(y_test,y_pred)
+        accuracy=accuracy_score(y_test,y_pred)
+        precision =precision_score(y_test, y_pred,average='micro')
+        recall =  recall_score(y_test, y_pred,average='micro')
+        f1 = f1_score(y_test,y_pred,average='micro')
+        print(y_pred)
+        print('Matriz de confusión para detectar virginica\n',cm)
+        print('Accuracy: ',accuracy)
+
 
 
 
 driver = main('train.csv')
-driver.prep()
+driver.RNA()
 
